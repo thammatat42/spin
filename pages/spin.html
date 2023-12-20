@@ -1,0 +1,293 @@
+<html>
+    <head>
+        <title>Bankok Kotmasu | Spinning</title>
+        <link rel="stylesheet" href="main.css" type="text/css" />
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+        <script type="text/javascript" src="../Winwheel.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TweenMax.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    </head>
+    <body>
+        <div class="row">
+            <div class="col-md-8" align="center">
+                </br>
+                </br>
+                </br>
+                </br>
+                <h1>Win prizes by spinning the wheel</h1>
+                <table cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td>
+                            <div class="power_controls">
+                                <table class="power" cellpadding="10" cellspacing="0">
+                                    <tr>
+                                        <th align="center">Power</th>
+                                    </tr>
+                                    <tr>
+                                        <td width="78" align="center" id="pw3" onClick="powerSelected(3);">High</td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center" id="pw2" onClick="powerSelected(2);">Med</td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center" id="pw1" onClick="powerSelected(1);">Low</td>
+                                    </tr>
+                                </table>
+                                <br />
+                                <img id="spin_button" src="spin_on.png" alt="Spin" onClick="startSpin();" />
+                                <br /><br />
+                                &nbsp;&nbsp;<a href="#" onClick="resetWheel(); return false;">Play Again</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(reset)
+                            </div>
+                        </td>
+                        <td width="438" height="582" class="the_wheel wheel-container" align="center" valign="center">
+                            <canvas id="canvas" width="434" height="434">
+                                <p style="color: white" align="center">Sorry, your browser doesn't support canvas. Please try another.</p>
+                            </canvas>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-4">
+                </br>
+                </br>
+                </br>
+                </br>
+                <h1>Winners of the prize</h1>
+                <table id="winnersTable" class="table table-bordered">
+                    <tbody id="winnersTableBody">
+                        <!-- Winners will be displayed here -->
+                    </tbody>
+                </table>
+
+            </div>
+            
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+        <script>
+            // Vars used by the code in this page to do power controls.
+            let wheelPower    = 0;
+            let wheelSpinning = false;
+            let theWheel;
+
+
+            axios.get('prize.json')
+            .then(response => {
+                const prizes = response.data; // Assuming response.data is an array of prize objects
+
+                // Initialize availablePrizes array
+                initAvailablePrizes(prizes);
+
+                // Map the fetched prizes to the format expected by Winwheel.js
+                const wheelSegments = prizes.map((prize, index) => {
+
+                    return {
+                        'fillStyle': getRandomColor(), // Assuming you have a function to generate random colors
+                        'text': prize.prizes // Assuming the prize object has a 'name' property
+                    };
+                });
+                
+                // Create the Winwheel object with the dynamically fetched segments
+                theWheel = new Winwheel({
+                    'numSegments': wheelSegments.length,
+                    'outerRadius': 212,
+                    'innerRadius': 120,
+                    'textFontSize': 16,
+                    'textMargin': 0,
+                    'segments': wheelSegments,
+                    'animation': {
+                        'type': 'spinToStop',
+                        'duration': 5,
+                        'spins': 5,
+                        'callbackFinished': alertPrize
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching prizes:', error);
+            });
+
+            let employees = [];
+            let availablePrizes = []; // Store available prizes
+            let winners = []; // Store winners
+
+            axios.get('employee.json')
+            .then(response => {
+                employees = response.data; // Assuming response.data is an array of employee objects
+
+            })
+            .catch(error => {
+                console.error('Error fetching employees:', error);
+            });
+            
+            // -------------------------------------------------------
+            // Function to auto generate color.
+            // -------------------------------------------------------
+
+            function getRandomColor() {
+                let letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+
+            // -------------------------------------------------------
+            // Function to handle the onClick on the power buttons.
+            // -------------------------------------------------------
+
+            function powerSelected(powerLevel)
+            {
+                // Ensure that power can't be changed while wheel is spinning.
+                if (wheelSpinning == false) {
+                    // Reset all to grey incase this is not the first time the user has selected the power.
+                    document.getElementById('pw1').className = "";
+                    document.getElementById('pw2').className = "";
+                    document.getElementById('pw3').className = "";
+
+                    // Now light up all cells below-and-including the one selected by changing the class.
+                    if (powerLevel >= 1) {
+                        document.getElementById('pw1').className = "pw1";
+                    }
+
+                    if (powerLevel >= 2) {
+                        document.getElementById('pw2').className = "pw2";
+                    }
+
+                    if (powerLevel >= 3) {
+                        document.getElementById('pw3').className = "pw3";
+                    }
+
+                    // Set wheelPower var used when spin button is clicked.
+                    wheelPower = powerLevel;
+
+                    // Light up the spin button by changing it's source image and adding a clickable class to it.
+                    document.getElementById('spin_button').src = "spin_on.png";
+                    document.getElementById('spin_button').className = "clickable";
+                }
+            }
+
+            // -------------------------------------------------------
+            // Click handler for spin button.
+            // -------------------------------------------------------
+
+            function startSpin()
+            {
+                // Ensure that spinning can't be clicked again while already running.
+                if (wheelSpinning == false) {
+                    // Based on the power level selected adjust the number of spins for the wheel, the more times is has
+                    // to rotate with the duration of the animation the quicker the wheel spins.
+                    if (wheelPower == 1) {
+                        theWheel.animation.spins = 3;
+                    } else if (wheelPower == 2) {
+                        theWheel.animation.spins = 8;
+                    } else if (wheelPower == 3) {
+                        theWheel.animation.spins = 15;
+                    }
+
+                    // Disable the spin button so can't click again while wheel is spinning.
+                    document.getElementById('spin_button').src       = "spin_off.png";
+                    document.getElementById('spin_button').className = "";
+
+                    // Begin the spin animation by calling startAnimation on the wheel object.
+                    theWheel.startAnimation();
+
+                    // Set to true so that power can't be changed and spin button re-enabled during
+                    // the current animation. The user will have to reset before spinning again.
+                    wheelSpinning = true;
+                }
+            }
+
+            // -------------------------------------------------------
+            // Function for reset button.
+            // -------------------------------------------------------
+
+            function resetWheel()
+            {
+                theWheel.stopAnimation(false);  // Stop the animation, false as param so does not call callback function.
+                theWheel.rotationAngle = 0;     // Re-set the wheel angle to 0 degrees.
+                theWheel.draw();                // Call draw to render changes to the wheel.
+
+                document.getElementById('pw1').className = "";  // Remove all colours from the power level indicators.
+                document.getElementById('pw2').className = "";
+                document.getElementById('pw3').className = "";
+
+                document.getElementById('spin_button').src = "spin_on.png";
+                document.getElementById('spin_button').className = "clickable";
+
+                wheelSpinning = false;          // Reset to false to power buttons and spin can be clicked again.
+            }
+
+            // -------------------------------------------------------
+
+            // function alertPrize(indicatedSegment)
+            // {
+            //     // Do basic alert of the segment text. You would probably want to do something more interesting with this information.
+            //     alert("You have won " + indicatedSegment.text);
+            // }
+
+
+            // Function to initialize availablePrizes array
+            function initAvailablePrizes(prizes) {
+                availablePrizes = prizes.map(prize => prize.prizes);
+
+                console.log('Available prizes:', availablePrizes);
+            }
+
+            function alertPrize(indicatedSegment) {
+                const selectedPrize = indicatedSegment.text;
+
+                // Remove selected prize from available prizes
+                const prizeIndex = availablePrizes.indexOf(selectedPrize);
+                if (prizeIndex > -1) {
+                    availablePrizes.splice(prizeIndex, 1);
+                }
+
+                // Select winners for the selected prize
+                const prizeWinners = selectWinners(selectedPrize);
+                winners.push(prizeWinners);
+
+                // Update UI or perform actions with winners data
+                displayWinners();
+
+                // Perform additional actions if needed based on the winners
+            }
+
+             // Function to randomly select 5 winners for a prize
+            function selectWinners(prizeName) {
+                const availableWinners = employees.map(employee  => employee.name);
+                const selectedWinners = [];
+
+                for (let i = 0; i < 20; i++) {
+                    const randomIndex = Math.floor(Math.random() * availableWinners.length);
+                    const winner = availableWinners[randomIndex];
+                    selectedWinners.push(winner);
+                    availableWinners.splice(randomIndex, 1);
+                }
+
+                return { prize: prizeName, winners: selectedWinners };
+            }
+
+            // Function to display winners in the table
+            function displayWinners() {
+                const winnersTableBody = document.getElementById('winnersTableBody');
+                winnersTableBody.innerHTML = '';
+
+                winners.slice(-20).forEach(prize => {
+                    const row = document.createElement('tr');
+                    const prizeCell = document.createElement('td');
+                    const winnersCell = document.createElement('td');
+
+                    prizeCell.textContent = prize.prize;
+                    winnersCell.textContent = prize.winners.join(', ');
+
+                    row.appendChild(prizeCell);
+                    row.appendChild(winnersCell);
+                    winnersTableBody.appendChild(row);
+                });
+            }
+
+        </script>
+    </body>
+</html>

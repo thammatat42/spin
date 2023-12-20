@@ -1,0 +1,44 @@
+[
+  {
+    "id": "1",
+    "prizes": "test1",
+    "total": 20,
+    "flag": 0
+  },
+  {
+    "id": "2",
+    "prizes": "test2",
+    "total": 1,
+    "flag": 0
+  },
+  {
+    "id": "3",
+    "prizes": "test3",
+    "total": 3,
+    "flag": 1
+  },
+  {
+    "id": "4",
+    "prizes": "test4",
+    "total": 3,
+    "flag": 0
+  },
+  {
+    "id": "5",
+    "prizes": "test5",
+    "total": 14,
+    "flag": 0
+  },
+  {
+    "id": "6",
+    "prizes": "test6",
+    "total": 8,
+    "flag": 0
+  },
+  {
+    "id": "7",
+    "prizes": "test7",
+    "total": 1,
+    "flag": 0
+  }
+]
