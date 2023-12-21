@@ -1,8 +1,9 @@
 <html>
     <head>
-        <title>Bankok Kotmasu | Spinning</title>
+        <title>Spinning Wheel</title>
         <link rel="stylesheet" href="main.css" type="text/css" />
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
         <script type="text/javascript" src="../Winwheel.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TweenMax.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
@@ -10,10 +11,6 @@
     <body>
         <div class="row">
             <div class="col-md-8" align="center">
-                </br>
-                </br>
-                </br>
-                </br>
                 <h1>Win prizes by spinning the wheel</h1>
                 <table cellpadding="0" cellspacing="0" border="0">
                     <tr>
@@ -48,77 +45,85 @@
                 </table>
             </div>
             <div class="col-md-4">
-                </br>
-                </br>
-                </br>
-                </br>
                 <h1>Winners of the prize</h1>
-                <table id="winnersTable" class="table table-bordered">
-                    <tbody id="winnersTableBody">
-                        <!-- Winners will be displayed here -->
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table id="winnersTable" class="table table-bordered">
+                        <tbody id="winnersTableBody">
+                            <!-- Winners will be displayed here -->
+                        </tbody>
+                    </table>
+                </div>
 
             </div>
             
         </div>
         <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
         <script>
             // Vars used by the code in this page to do power controls.
             let wheelPower    = 0;
             let wheelSpinning = false;
             let theWheel;
-
-
-            axios.get('prize.json')
-            .then(response => {
-                const prizes = response.data; // Assuming response.data is an array of prize objects
-
-                // Initialize availablePrizes array
-                initAvailablePrizes(prizes);
-
-                // Map the fetched prizes to the format expected by Winwheel.js
-                const wheelSegments = prizes.map((prize, index) => {
-
-                    return {
-                        'fillStyle': getRandomColor(), // Assuming you have a function to generate random colors
-                        'text': prize.prizes // Assuming the prize object has a 'name' property
-                    };
-                });
-                
-                // Create the Winwheel object with the dynamically fetched segments
-                theWheel = new Winwheel({
-                    'numSegments': wheelSegments.length,
-                    'outerRadius': 212,
-                    'innerRadius': 120,
-                    'textFontSize': 16,
-                    'textMargin': 0,
-                    'segments': wheelSegments,
-                    'animation': {
-                        'type': 'spinToStop',
-                        'duration': 5,
-                        'spins': 5,
-                        'callbackFinished': alertPrize
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching prizes:', error);
-            });
-
             let employees = [];
             let availablePrizes = []; // Store available prizes
             let winners = []; // Store winners
+            let total = 0;
 
-            axios.get('employee.json')
-            .then(response => {
-                employees = response.data; // Assuming response.data is an array of employee objects
+            loadPrizes();
+            loadEmployees();
 
-            })
-            .catch(error => {
-                console.error('Error fetching employees:', error);
-            });
+            async function loadPrizes() {
+                try {
+                    const response = await axios.get('http://localhost:3000/spin/prize/list?page=1&size=100');
+                    const prizes = response.data.data; // Assuming response.data is an array of prize objects
+
+                    if (prizes.length == 0) {
+                        document.getElementById('spin_button').src       = "spin_off.png";
+                        document.getElementById('spin_button').className = "";
+                    }
+
+                    // Initialize availablePrizes array
+                    initAvailablePrizes(prizes);
+
+                    // Map the fetched prizes to the format expected by Winwheel.js
+                    const wheelSegments = prizes.map((prize, index) => {
+
+                        return {
+                            'fillStyle': getRandomColor(), // Assuming you have a function to generate random colors
+                            'text': prize.id.toString() // Assuming the prize object has a 'name' property
+                        };
+                    });
+                    
+                    // Create the Winwheel object with the dynamically fetched segments
+                    theWheel = new Winwheel({
+                        'numSegments': wheelSegments.length,
+                        'outerRadius': 212,
+                        'innerRadius': 120,
+                        'textFontSize': 16,
+                        'textMargin': 0,
+                        'segments': wheelSegments,
+                        'animation': {
+                            'type': 'spinToStop',
+                            'duration': 5,
+                            'spins': 5,
+                            'callbackFinished': alertPrize
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error fetching prizes:', error);
+                }
+            }
+
+            async function loadEmployees() {
+                try {
+                    const response = await axios.get('http://localhost:3000/spin/name/all?page=1&size=2000');
+                    employees = response.data.data; // Assuming response.data is an array of employee objects
+
+                } catch (error) {
+                    console.error('Error fetching employees:', error);
+                }
+            }
             
             // -------------------------------------------------------
             // Function to auto generate color.
@@ -217,25 +222,19 @@
                 document.getElementById('spin_button').className = "clickable";
 
                 wheelSpinning = false;          // Reset to false to power buttons and spin can be clicked again.
+
+                loadPrizes();
+                loadEmployees();
             }
 
             // -------------------------------------------------------
 
-            // function alertPrize(indicatedSegment)
-            // {
-            //     // Do basic alert of the segment text. You would probably want to do something more interesting with this information.
-            //     alert("You have won " + indicatedSegment.text);
-            // }
-
-
             // Function to initialize availablePrizes array
             function initAvailablePrizes(prizes) {
                 availablePrizes = prizes.map(prize => prize.prizes);
-
-                console.log('Available prizes:', availablePrizes);
             }
 
-            function alertPrize(indicatedSegment) {
+            async function alertPrize(indicatedSegment) {
                 const selectedPrize = indicatedSegment.text;
 
                 // Remove selected prize from available prizes
@@ -244,37 +243,118 @@
                     availablePrizes.splice(prizeIndex, 1);
                 }
 
-                // Select winners for the selected prize
-                const prizeWinners = selectWinners(selectedPrize);
-                winners.push(prizeWinners);
+                const response = await axios.get('http://localhost:3000/spin/prize/' + selectedPrize);
+                const prizes = response.data.data.prizes;
+                
+                Swal.fire({
+                    title: "<strong>Ready to Random Name!</strong>",
+                    icon: "success",
+                    html: `
+                        Next to random name for <b>${prizes}</b>
+                    `,
+                    showCloseButton: true,
+                    showCancelButton: true,
+                    focusConfirm: false,
+                    confirmButtonText: `
+                        <i class="fa-solid fa-gift"></i> Go!
+                    `,
+                    confirmButtonAriaLabel: "Great!",
+                    cancelButtonText: `
+                        <i class="fa-solid fa-xmark"></i> Cancel!
+                    `,
+                    cancelButtonAriaLabel: "Thumbs down",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(async (result) => {
 
-                // Update UI or perform actions with winners data
-                displayWinners();
+                    if (result.isConfirmed) {
+                        const prizeWinners = await selectWinners(selectedPrize);
+                        winners.push(prizeWinners);
 
-                // Perform additional actions if needed based on the winners
+                        //Remove prize with api
+                        const response = await axios.put('http://localhost:3000/spin/prize/remove/' + selectedPrize);
+
+                        console.log(response);
+
+                        // Update UI or perform actions with winners data
+                        displayWinners();
+                        resetWheel();
+                    } else {
+                        // Reset wheel
+                        resetWheel();
+                    }
+                })
             }
 
+
              // Function to randomly select 5 winners for a prize
-            function selectWinners(prizeName) {
-                const availableWinners = employees.map(employee  => employee.name);
+             async function selectWinners(prizeName) {
+                try {
+                    const response = await axios.get('http://localhost:3000/spin/prize/' + prizeName);
+                    const total_prize = response.data.data.total;
+                    const prizes = response.data.data.prizes;
+                    const prizeId = prizeName;
+
+                    const data = await RandomName(prizeId, prizes, total_prize);
+                    console.log("data: ", data);
+
+                    return { 
+                        prize: prizes, 
+                        winners: data.winners, 
+                        total: total_prize 
+                    };
+                } catch (error) {
+                    console.error('Error fetching prizes:', error);
+                    return null;
+                }
+            }
+            
+            async function RandomName(prizeId, prizeName, total_prize) {
+
+                //Random name follow total prize
+                const availableWinners = employees.map(employee  => employee.emp_name);
                 const selectedWinners = [];
 
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < parseInt(total_prize); i++) {
                     const randomIndex = Math.floor(Math.random() * availableWinners.length);
                     const winner = availableWinners[randomIndex];
+
+                    const emp_id = winner.split(' ')[0].slice(1, -1);
+
+                    await updateFlag(emp_id, prizeId);
+
+                    console.log('Selected winner:', winner, emp_id);
                     selectedWinners.push(winner);
                     availableWinners.splice(randomIndex, 1);
                 }
 
-                return { prize: prizeName, winners: selectedWinners };
+                return { prize: prizeName, winners: selectedWinners, total: total_prize };
+            }
+
+            async function updateFlag(empId, prizeId) {
+                try {
+
+                    const data = {
+                        emp_id: empId,
+                        prize_id: prizeId
+                    }
+                
+                    const response = await axios.post('http://localhost:3000/spin/name/remove', data);
+
+                    console.log(`Flag updated for emp_id ${empId}`);
+                } catch (error) {
+                    console.error(`Error updating flag for emp_id ${empId}:`, error);
+                }
             }
 
             // Function to display winners in the table
             function displayWinners() {
                 const winnersTableBody = document.getElementById('winnersTableBody');
                 winnersTableBody.innerHTML = '';
+                console.log('Displaying winners:', winners);
 
-                winners.slice(-20).forEach(prize => {
+                winners.slice(-total).forEach(prize => {
+                    console.log('Displaying winners for prize:', prize);
                     const row = document.createElement('tr');
                     const prizeCell = document.createElement('td');
                     const winnersCell = document.createElement('td');
